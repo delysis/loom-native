@@ -622,8 +622,13 @@ mod tests {
         }
     }
 
-    fn facts(trial_fingerprint: BlobId, charge: BudgetAmount) -> CompletedTrialFacts {
+    fn facts(
+        trial_run_id: TrialRunId,
+        trial_fingerprint: BlobId,
+        charge: BudgetAmount,
+    ) -> CompletedTrialFacts {
         CompletedTrialFacts {
+            trial_run_id,
             trial_fingerprint,
             trial_journal_fingerprint: BlobId::digest(b"trial journal head"),
             archive_output_fingerprint: BlobId::digest(b"archive output"),
@@ -639,9 +644,11 @@ mod tests {
         let reservation = CampaignBudgetAmount::new(20, 10, 3, 100).expect("reservation");
         let charge = BudgetAmount::new(12, 4, 2, 80).expect("charge");
         let exact_permit = permit(trial, reservation);
+        // The completed facts must name the same run the permit dispatched.
+        let exact_run = exact_permit.attempt_id.as_trial_run_id();
         let first = verify_completed_trial_facts(
             duplicate_permit_for_test(&exact_permit),
-            facts(trial, charge),
+            facts(exact_run, trial, charge),
         )
         .expect("matching completed trial");
         assert_eq!(
@@ -655,14 +662,14 @@ mod tests {
             }
         );
 
-        let mut changed_journal = facts(trial, charge);
+        let mut changed_journal = facts(exact_run, trial, charge);
         changed_journal.trial_journal_fingerprint = BlobId::digest(b"different trial journal");
-        let mut changed_output = facts(trial, charge);
+        let mut changed_output = facts(exact_run, trial, charge);
         changed_output.archive_output_fingerprint = BlobId::digest(b"different archive output");
-        let mut changed_archive_terminal = facts(trial, charge);
+        let mut changed_archive_terminal = facts(exact_run, trial, charge);
         changed_archive_terminal.archive_terminal_event_fingerprint =
             BlobId::digest(b"different archive terminal");
-        let mut changed_completion = facts(trial, charge);
+        let mut changed_completion = facts(exact_run, trial, charge);
         changed_completion.live_completion_evidence_fingerprint =
             BlobId::digest(b"different live completion");
         for changed in [
@@ -686,18 +693,24 @@ mod tests {
         let trial = BlobId::digest(b"trial");
         let reservation = CampaignBudgetAmount::new(20, 10, 3, 100).expect("reservation");
         let charge = BudgetAmount::new(12, 4, 2, 80).expect("charge");
+        // Each case below binds the permit's own run id so the rejection is
+        // caused only by the defect under test, never by an incidental
+        // run-id mismatch.
+        let wrong_trial_permit = permit(trial, reservation);
+        let wrong_trial_run = wrong_trial_permit.attempt_id.as_trial_run_id();
         assert!(matches!(
             verify_completed_trial_facts(
-                permit(trial, reservation),
-                facts(BlobId::digest(b"other trial"), charge),
+                wrong_trial_permit,
+                facts(wrong_trial_run, BlobId::digest(b"other trial"), charge),
             ),
             Err(CampaignAuthorityError::TrialMismatch)
         ));
 
         let mut wrong_spec = permit(trial, reservation);
+        let wrong_spec_run = wrong_spec.attempt_id.as_trial_run_id();
         wrong_spec.trial_spec_fingerprint = BlobId::digest(b"substituted frozen trial spec");
         assert!(matches!(
-            verify_completed_trial_facts(wrong_spec, facts(trial, charge)),
+            verify_completed_trial_facts(wrong_spec, facts(wrong_spec_run, trial, charge)),
             Err(CampaignAuthorityError::TrialMismatch)
         ));
 
@@ -707,8 +720,10 @@ mod tests {
             BudgetAmount::new(12, 4, 4, 80).expect("evaluation inflation"),
             BudgetAmount::new(12, 4, 2, 101).expect("wall-time inflation"),
         ] {
+            let inflated_permit = permit(trial, reservation);
+            let inflated_run = inflated_permit.attempt_id.as_trial_run_id();
             assert!(matches!(
-                verify_completed_trial_facts(permit(trial, reservation), facts(trial, inflated),),
+                verify_completed_trial_facts(inflated_permit, facts(inflated_run, trial, inflated),),
                 Err(CampaignAuthorityError::ChargeExceedsReservation)
             ));
         }
