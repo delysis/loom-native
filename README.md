@@ -1,5 +1,11 @@
 # Loom Native
 
+> **Canonical development has moved.** Loom now lives in
+> [`delysis/native-platform`](https://github.com/delysis/native-platform/tree/w7-import-loom-v0-2026-08-13/products/loom)
+> at the protected `w7-import-loom-v0-2026-08-13` milestone. This repository is
+> retained, unarchived, as immutable source history. Land features and security
+> fixes in the monorepo first.
+
 Loom Native is an early, local-first desktop writing environment for prose and poetry. Active manuscripts remain ordinary UTF-8 files; a hidden `.loom/` sidecar holds revisions, provenance, transient crash-recovery drafts, branch records, and visible-file recovery state.
 
 This repository is an executable development foundation, not a finished release. Editing, storage, model inspection, private local suggestions, and the headless native fiction-research kernel work today. The exact quiet desktop has completed a real Gemma 4 E2B base Q8 Metal suggestion, caret-ghost acceptance, durable promotion, loaded-model quit, and immediate-relaunch exercise. There are no signed installers, hosted-provider adapter, attachment or speech adapters, or release-certified platform backends.
